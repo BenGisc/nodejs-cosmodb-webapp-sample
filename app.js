@@ -1,3 +1,8 @@
+var DocumentDBClient = require('documentdb').DocumentClient;
+var config = require('./config');
+var TaskList = require('./routes/tasklist');
+var TaskModel = require('./models/taskModel');
+
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
@@ -22,8 +27,17 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', index);
-app.use('/users', users);
+let docDbClient = new DocumentDBClient(config.host, {
+    masterKey: config.authKey
+});
+let taskModel = new TaskModel(docDbClient, config.databaseId, config.collectionId);
+let taskList = new TaskList(taskModel);
+taskModel.init();
+
+app.get('/', taskList.showTasks.bind(taskList));
+app.post('/addtask', taskList.addTask.bind(taskList));
+app.post('/completetask', taskList.completeTask.bind(taskList));
+app.set('view engine', 'jade');
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
